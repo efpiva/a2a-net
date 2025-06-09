@@ -78,8 +78,14 @@ public class TaskHandler(ITaskRepository tasks, ITaskEventStream taskEventStream
                 await NotifyTaskStatusUpdateAsync(task, cancellationToken).ConfigureAwait(false);
             }
             var working = false;
+            bool messageReceived = false;
             await foreach (var content in AgentRuntime.ExecuteAsync(task, cancellationToken).ConfigureAwait(false))
             {
+                if (messageReceived)
+                {
+                    break;
+                }
+
                 if (!working)
                 {
                     task.History ??= [];
@@ -100,7 +106,8 @@ public class TaskHandler(ITaskRepository tasks, ITaskEventStream taskEventStream
                         break;
                     case AgentResponseContentType.Message:
                         task = await WaitForInputAsync(task, content.Message!, cancellationToken).ConfigureAwait(false);
-                        return task;
+                        messageReceived = true;
+                        break;
                     default:
                         throw new NotSupportedException($"The specified agent response content type '{content.Type}' is not supported");
                 }
