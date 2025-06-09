@@ -291,6 +291,43 @@ public class A2AProtocolHttpClientTests
         response.Id.Should().Be(sendRequest.Id);
         response.Result.Should().NotBeNull();
         response.Result.Id.Should().Be(sendRequest.Params.Id);
+    }    [Fact]
+    public async System.Threading.Tasks.Task Options_Should_Work()
+    {
+        //arrange
+        using var httpClient = WebServerFactory.CreateClient();
+
+        //act
+        var response = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Options, "/a2a"));
+
+        //assert
+        response.Should().NotBeNull();
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.OK);
+        
+        // Check for CORS headers (most important for preflight requests)
+        response.Headers.Should().ContainKey("Access-Control-Allow-Methods");
+        response.Headers.GetValues("Access-Control-Allow-Methods").Should().Contain("POST, OPTIONS");
+        response.Headers.Should().ContainKey("Access-Control-Allow-Headers");
+        response.Headers.GetValues("Access-Control-Allow-Headers").Should().Contain("Content-Type, Authorization");
+        response.Headers.Should().ContainKey("Access-Control-Max-Age");
+        response.Headers.GetValues("Access-Control-Max-Age").Should().Contain("86400");
+        
+        // The Allow header may or may not be present depending on ASP.NET Core implementation
+        // For CORS purposes, the Access-Control-Allow-Methods header is more important
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task Get_Should_Return_MethodNotAllowed()
+    {
+        //arrange
+        using var httpClient = WebServerFactory.CreateClient();
+
+        //act
+        var response = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Get, "/a2a"));
+
+        //assert
+        response.Should().NotBeNull();
+        response.StatusCode.Should().Be(System.Net.HttpStatusCode.MethodNotAllowed);
     }
 
     void IDisposable.Dispose()

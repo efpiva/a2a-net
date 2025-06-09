@@ -27,18 +27,29 @@ public class A2AHttpMiddleware(IA2AProtocolServerProvider serverProvider, IOptio
 {
 
     readonly IA2AProtocolServerProvider _serverProvider = serverProvider;
-    readonly JsonOptions _jsonOptions = jsonOptions.Value;
-
-    /// <summary>
+    readonly JsonOptions _jsonOptions = jsonOptions.Value;    /// <summary>
     /// Invokes the <see cref="A2AHttpMiddleware"/>
     /// </summary>
     /// <param name="context">The current <see cref="HttpContext"/></param>
     /// <returns>A new awaitable <see cref="System.Threading.Tasks.Task"/></returns>
     public async System.Threading.Tasks.Task InvokeAsync(HttpContext context)
-    {
-        if (!HttpMethods.IsPost(context.Request.Method))
+    {        // Handle OPTIONS requests for CORS preflight
+        if (HttpMethods.IsOptions(context.Request.Method))
+        {
+            context.Response.StatusCode = (int)HttpStatusCode.OK;
+            
+            // Set Allow header using the Append method
+            context.Response.Headers.Append("Allow", "POST, OPTIONS");
+            
+            // Set CORS headers
+            context.Response.Headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
+            context.Response.Headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization";
+            context.Response.Headers["Access-Control-Max-Age"] = "86400"; // 24 hours
+            return;
+        }        if (!HttpMethods.IsPost(context.Request.Method))
         {
             context.Response.StatusCode = (int)HttpStatusCode.MethodNotAllowed;
+            context.Response.Headers.Append("Allow", "POST, OPTIONS");
             return;
         }
         var request = await JsonSerializer.DeserializeAsync<RpcRequest>(context.Request.Body, cancellationToken: context.RequestAborted);
